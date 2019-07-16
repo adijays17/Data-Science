@@ -1,0 +1,189 @@
+---
+title: "Divvy_Bike_Final"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(PerformanceAnalytics)
+```
+
+### Initial Data Exploration
+```{r}
+divy=read.csv('bike.csv',header = TRUE)
+#View(divy)
+#structure(divy)
+
+divy_subset<-divy%>%select(-ARSON,-CONCEALED_CARRY_LICENSE_VIOLATIO,-CRIM_SEXUAL_ASSAULT,-CRIMINAL_DAMAGE,-GAMBLING,-HUMAN_TRAFFICKING,-INTERFERENCE_WITH_PUBLIC_OFFICER,-INTIMIDATION,-KIDNAPPING,-LIQUOR_LAW_VIOLATION,-MOTOR_VEHICLE_THEFT,-NON_CRIMINAL,-OBSCENITY,-OFFENSE_INVOLVING_CHILDREN,-OTHER_NARCOTIC_VIOLATION,-OTHER_OFFENSE,-PROSTITUTION,-PUBLIC_INDECENCY,-PUBLIC_PEACE_VIOLATION,-SEX_OFFENSE,-STALKING,-WEAPONS_VIOLATION,-i)
+
+#View(divy_subset)
+
+chart.Correlation(divy_subset)
+```
+### Exploring the possible control variables
+
+*BIKE_ROUTES*   
+- This variable denotes the total number of bike routes available in any given region.       
+- The value ranges from ~ 4 to 43 bike routes.    
+- It is self evident that bike routes and bike rentals are directly proportional.    
+- Higher the bike routes options available more the people are going to opt for bicycling, in our case increase in bike rentals.    
+- From the plot we can see that the trips is linearly increasing as the bike routes increases from ~ 10 to 30 and remains constant after that.   
+- The fit also gives a positive coefficient(1.6351) with very high significance   
+
+```{r}
+summary(divy_subset$BIKE_ROUTES)
+plot(log(divy_subset$BIKE_ROUTES),divy_subset$trips)
+fit_bike_routes = lm(trips ~ log(BIKE_ROUTES), data = divy_subset)
+summary(fit_bike_routes)
+```
+*EDU*   
+- This variable refers to the education of the people living in that area.     
+- The value ranges from ~0.1 to 0.99.     
+- Generally, a region with higher edu value indicates that the places should have lot of schools and colleges around.     
+- With schools and colleges around need for bike rentals are going to be more hence we inclined to think EDU and TRIPS are positively correlated.   
+- As we suspected the below plot indicates a positive correlation.
+- The fit also gives a positive coefficient(2.7094) with very high significance  
+
+```{r}
+summary(divy_subset$EDU)
+plot(divy_subset$EDU,divy_subset$trips)
+fit_edu = lm(trips ~ EDU, data = divy_subset)
+summary(fit_edu)
+```
+*CAPACITY*
+- This variable represents the number of slots allocated to the bikes at any particular station.   
+- The capacity value ranges from 9 to 43.   
+- It is apparent that the station will have it’s slots allocated based on it’s demand for bike rentals so, it’s a good indicator to represent the demand for divvy bike rentals in that station.    
+- Hence, higher the capacity more the number of divvy bike trips.    
+- From the plot, we can clearly see a positive correlation between capacity and trips.     
+- The fit also gives a positive coefficient(2.2469) with very high significance
+
+```{r}
+summary(divy_subset$CAPACITY)
+plot(log(divy_subset$CAPACITY),divy_subset$trips)
+fit_capacity = lm(trips ~ log(CAPACITY), data = divy_subset)
+summary(fit_capacity)
+```
+
+
+### Exploring the crime variables after removing control variables
+
+```{r}
+fit_crime_log = lm(trips ~ log(THEFT+1) + log(BATTERY+1) + log(DECEPTIVE_PRACTICE+1) +  log(BURGLARY+1) +log(ASSAULT+1) + log(ROBBERY+1) + log(CRIMINAL_TRESPASS+1) + log(NARCOTICS+1) + log(HOMICIDE+1), data = divy)
+
+summary(fit_crime_log)
+```
+
+*NARCOTICS*  
+- The term narcotic originally referred medically to any psychoactive compound with sleep-inducing properties.    - In the United States, it has since become associated with opiates and opioids, commonly morphine and heroin, as well as derivatives of many of the compounds found within raw opium latex.
+- This variable denotes the Narcotics drug usage around the region of divvy bike station. In general, drugs specifically has no direct influence on biking hence drug usage should not impact the bike rentals.   
+- The below plot clearly represents snow-storm and proves neutral relationship between Narcotics and Trips.
+- The cofficient in fit result is also not significant. Hence we decide to remove this variable from the model
+
+
+```{r}
+plot(divy_subset$NARCOTICS,divy_subset$trips)
+fit_narcotics = lm(trips ~ log(NARCOTICS), data = divy_subset)
+summary(fit_narcotics)
+```
+*CRIMINAL_TRESPASS*
+
+- Criminal trespass refers to an unlawful entry by a person into a private property of another person without permission. Any person so entering the property without permission is held to have committed the offence of criminal trespass.      
+
+- Criminal Trespassing normally is not an independent crime substantially it is associated with major crimes like assault,theft,robbery or battery. The plot below also confirms the correlation between major crimes and trespassing.
+
+```{r}
+divy_crim_tres<-divy_subset%>%select(CRIMINAL_TRESPASS,ASSAULT,BATTERY,DECEPTIVE_PRACTICE,ROBBERY,THEFT)
+
+chart.Correlation(divy_crim_tres)
+```
+
+
+- In general we expect a negative correlation between criminal trespass and bike rentals, but the below fit gives us a positive coefficient (0.34484) which is also highly significant.  
+
+```{r}
+fit_criminal = lm(trips ~ CRIMINAL_TRESPASS, data = divy_subset)
+summary(fit_criminal)
+```
+
+
+- Exploring more we also found a strong positive correlation between CTA_BUS_STATIONS and CRIMINAL_TRESPASS,  ~ r = 0.78.   
+
+```{r}
+cor(divy$CRIMINAL_TRESPASS, divy$CTA_BUS_STATIONS)
+```
+
+- When we added CTA_BUS_STATIONS to the model, as expected we can see a sign flip for coefficient of CRIMINAL_TRESPASS(-0.01) and with no significance.    
+
+```{r}
+fit_criminal_cta = lm(trips~CTA_BUS_STATIONS+CRIMINAL_TRESPASS, data = divy_subset)
+summary(fit_criminal_cta)
+```
+
+- Because of this high correlation between CTA_BUS_STATIONS and other major crime variables we decide to drop CRIMINAL_TRESPASS from the model. Moreover we think just a crime of criminal trespassing alone should not have much impact on the bike rentals.
+
+
+
+*HOMICIDE*  
+- Homicide is the act of one human killing another. A homicide requires only a volitional act by another person that results in death, and thus a homicide may result from accidental, reckless, or negligent acts even if there is no intent to cause harm. 
+- We consider Homicide as an important feature for our regression model because we think that Divvy bike's trips will get decrease by the fact of an increase of Homicide in that area because 
+- As per our model suggest that the there is slightly significant (p=0.01442) negative relation with the coefficient of -0.2686 between Homicide and Divvy bike's trips attribute which suggest that there is a decrease in Divvy trips if the Homicide increases in that Area.  
+
+```{r}
+plot(divy_subset$HOMICIDE,divy_subset$trips)
+fit_homicide = lm(trips ~ log(HOMICIDE+1), data = divy_subset)
+summary(fit_homicide)
+```
+
+*ROBBERY*  
+- Robbery is the crime of taking or attempting to take anything of value by force, the threat of force, or by putting the victim in fear. 
+- We believe that Divvy bikes trips will decrease if the robbery in the area increases because it is very easy to rob a person on bikes compared to other vehicles and the threat of getting robbed makes the people skip using Divvy bikes.
+- As per our model suggest that the there is significant (p=0.00936) negative relation with the coefficient of -1.495 between robbery and Divvy bike's trips attribute which suggest that there is a decrease in Divvy trips if the rate of robbery increases in that Area. 
+
+```{r}
+plot(divy_subset$ROBBERY,divy_subset$trips)
+fit_Robbery = lm(trips ~ log(ROBBERY+1), data = divy_subset)
+summary(fit_Robbery)
+```
+
+
+*CTA_TRAIN_STATIONS*   
+CTA-train-stations shows a positive relation with Divvy trips which means that there is an increase in Divvy trips if there is more number of CTA-train-stations in nearby areas. 
+Reason: As per our opinion, there is an increase in Divvy trips for more number od CTA-train-stations because of following reasons:
+1. The number of CTA-train-station is more than might be the population of that area is more due to which the number of Divvy trips is more for that area.
+2. The number of CTA-train-station is more because of maybe too many office spaces in that area. So people come from far distances using CTA and then take Divvy bikes to ride form CTA-train-station to their offices
+
+```{r}
+summary(divy_subset$CTA_TRAIN_STATIONS)
+plot(divy_subset$CTA_TRAIN_STATIONS,divy_subset$trips)
+fit_cta_train = lm(trips ~ CTA_TRAIN_STATIONS, data = divy_subset)
+summary(fit_cta_train)
+```
+
+
+*MINORITY*   
+A minority group refers to a category of people who experience relative disadvantage as compared to members of a dominant social group.
+The minority is negatively related to trips which means that there is a decrease in rent of Divvy bike if the Minority is increased for that particular Area. In our opinion, the reason could be there is less Divvy bike stations in those Areas for the fact is a Minor area. So due to less number of Divvy bikes stations cause in fewer bikes usage in those areas.
+
+```{r}
+summary(divy_subset$MINORITY)
+plot(divy_subset$MINORITY,divy_subset$trips)
+fit_minority = lm(trips ~ MINORITY, data = divy_subset)
+summary(fit_minority)
+```
+
+*PER_CAPITA_INCOME*   
+Per capita income or average income measures the average income earned per person in a given area in a specified year. 
+In our opinion, per-capita-income does not affect Divvy trips or should show a constant relation with the number of trips due to the following reason:
+1. As per our understanding, the Divvy trips are not that much costly and due to which the divvy trips are not affected in low per capita income areas. 
+2. For the area where per capita income is high, people use Divvy bikes as per their cycling interest.
+
+So for the fact it is constant and does not affect more on Divvy trips, we planned to drop this attribute. As per below summary, the PER_CAPITA_INCOME was not significant as well as p-value is 0.161 
+
+```{r}
+summary(divy_subset$PER_CAPITA_INCOME)
+plot(divy_subset$PER_CAPITA_INCOME,divy_subset$trips)
+fit_PER_CAPITA_INCOME = lm(trips ~ PER_CAPITA_INCOME, data = divy_subset)
+summary(fit_PER_CAPITA_INCOME)
+```

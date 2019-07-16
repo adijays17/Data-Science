@@ -1,0 +1,43 @@
+fit_MINORITY <- lm(trips~MINORITY, divy_subset)
+plot(divy_subset$MINORITY, divy_subset$trips)
+abline(fit_MINORITY)
+
+fit_EDU<- lm(trips~EDU, divy_subset)
+plot(divy_subset$EDU, divy_subset$trips)
+abline(fit_EDU)
+
+fit_ASSAULT<- lm(trips~ASSAULT+I(ASSAULT^2), divy_subset)
+plot(divy_subset$ASSAULT, divy_subset$trips)
+lines(1:8, predict(fit_ASSAULT, data.frame(ASSAULT=1:8)), col=2)
+#abline(fit_ASSAULT)
+
+fit_BATTERY<- lm(trips~BATTERY+I(BATTERY^2), divy_subset)
+plot(divy_subset$BATTERY, divy_subset$trips)
+lines(1:10, predict(fit_BATTERY, data.frame(BATTERY=1:10)), col=2)
+#abline(fit_BATTERY)
+
+fit_BURGLARY<- lm(trips~BURGLARY+I(BURGLARY^2), divy_subset)
+plot(divy_subset$BURGLARY, divy_subset$trips)
+lines(1:7, predict(fit_BURGLARY, data.frame(BURGLARY=1:7)), col=2)
+#abline(fit_BURGLARY)
+
+
+
+
+#fit2=lm(trips~DECEPTIVE_PRACTICE+I(-DECEPTIVE_PRACTICE^2),divy_subset)
+fit=lm(trips~DECEPTIVE_PRACTICE,divy_subset)
+fit2=lm(log(trips)~log(DECEPTIVE_PRACTICE),divy_subset)
+plot(divy_subset$DECEPTIVE_PRACTICE,divy_subset$trips)
+#plot(fit)
+
+abline(fit)
+lines(2:8, exp(predict(fit2, data.frame(DECEPTIVE_PRACTICE=2:8))), col=2)
+
+fit_MINORITY <- lm(trips~MINORITY+I(MINORITY), divy_subset)
+fit_EDU<- lm(trips~EDU), divy_subset)
+fit_ASSAULT<- lm(trips~ASSAULT+I(ASSAULT^2), divy_subset)
+fit_BATTERY<- lm(trips~BATTERY+I(BATTERY^2), divy_subset)
+fit_BURGLARY<- lm(trips~BURGLARY+I(BURGLARY^2), divy_subset)
+
+
+trips~MINORITY+EDU+ASSAULT+I(ASSAULT^2)+BATTERY+I(BATTERY^2)+BURGLARY+I(BURGLARY^2)

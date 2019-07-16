@@ -1,0 +1,29 @@
+Per-capita-income
+-----------------
+Per capita income or average income measures the average income earned per person in a given area in a specified year. 
+In our opinion, per-captia-income does not affect the Divvy trips or should show a constant relation with number of trips due to following reason:
+1. As per our understaning, the Divvy trips are not that much costly and due to which the divvy trips are not affected in low per capita income areas. 2. For the area where per capita income is high, people uses Divvy bikes as per their cycling interest.
+
+CTA-train-station
+-----------------
+CTA-train-stations shows positive relation with Divvy trips which means that there is increase in Divvy trips if there is more number of CTA-train-stations in near by areas. 
+Reason: As per our opinion, there is increase in Divvy trips for more number od CTA-train-stations because of follwoing reasons:
+1. The number of CTA-train-station is more then might be the population of that area is more due to which number of Divvy trips is more for that area.
+2. The number of CTA-train-station is more becasue of too many office space in that Area. So people come from far distances and take Divvy bikes to ride form CTA-train-station to their offices
+
+Minority
+--------
+A minority group refers to a category of people who experience relative disadvantage as compared to members of a dominant social group.
+Minority is negatively related to trips which means that there is decrese in rent of Divvy bike if the Minority is incresed for that particular Area. In our opinion, the reason could be there is less Divvy bike stations in those Areas for the fact is a Minor areas. So due to less number of Divvy bikes stations cause in less bikes usage in those areas.
+
+Homicide
+--------
+Homicide is the act of one human killing another. A homicide requires only a volitional act by another person that results in death, and thus a homicide may result from accidental, reckless, or negligent acts even if there is no intent to cause harm. 
+We consider Homicide as important feature for our regression model becasue we think that Divvy bike's trips will get decrease by the fact of increase of Homicide in that area becasue 
+As per our model suggest that the there is silghtly significant (p=0.01442) negative relation with coeffienet of -0.2686 between Homicide and Divvy bike's trips attribute which suggest that there is decrese in Divvy trips if the Homicide increses in that Area.  
+
+Robberry
+--------
+Robbery is the crime of taking or attempting to take anything of value by force, threat of force, or by putting the victim in fear. 
+We believe that Divvy bikes trips will decrease if the robberry in the area increases because it is very easy to rob a person on bikes compared to other vechiles and the threat of getting robbed makes the people to skip using Divvy bikes.
+As per our model suggest that the there is significant (p=0.00936) negative relation with coeffienet of -1.495 between robberry and Divvy bike's trips attribute which suggest that there is decrese in Divvy trips if the rate of robberry increses in that Area. 

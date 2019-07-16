@@ -1,0 +1,448 @@
+---
+title: "Divvy bike"
+author: "Siddharth,Rekha,Kailash,Aditya"
+date: "Apr 29, 2019"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(car)
+library(dplyr)
+library(PerformanceAnalytics)
+```
+### How does the type and amount of crime around a Divvy bike station affect the demand for bikes, as measured by the number of rentals per time period?
+
+Your data will have data on how often 31 different crimes occurred in the area around the bike share station during the previous year. Many of the crimes are are, so we will focus on the following eight (you could use the other if you want): theft, battery, deceptive practice, assault, burglary, robbery, criminal trespassing, narcotics, and homicide.  
+
+You will also have data on: number of bus stops in the area, number of train
+stops in the area, station capacity (number of bikes), number of marked bike routes,
+number of businesses in the area, population density, park area, percent minority,
+average education level, and average per capita income. For this problem, I want you
+to develop a theory to explain how dierent types of crime will affect demand. It
+may be that some types of crime have no relationship with demand, and your theory
+should allow for this. Why might some types have an association and others not?
+Another consideration is that you have actual crime statistics from the Chicago Police
+Department instead of perceptions about crime. The two could be different (why?).
+Your next assignment will be to test your theory against the data.
+
+```{r}
+divy = read.csv("bike.csv", header = TRUE)
+colnames(divy)
+nrow(divy)
+```
+- n = 300 bike stations
+
+
+```{r}
+#head(divy)
+#cor(divy)
+```
+
+### Removing other crime variables 
+```{r}
+divy_subset<-divy%>%select(-ARSON,-CONCEALED_CARRY_LICENSE_VIOLATIO,-CRIM_SEXUAL_ASSAULT,-CRIMINAL_DAMAGE,-GAMBLING,-HUMAN_TRAFFICKING,-INTERFERENCE_WITH_PUBLIC_OFFICER,-INTIMIDATION,-KIDNAPPING,-LIQUOR_LAW_VIOLATION,-MOTOR_VEHICLE_THEFT,-NON_CRIMINAL,-OBSCENITY,-OFFENSE_INVOLVING_CHILDREN,-OTHER_NARCOTIC_VIOLATION,-OTHER_OFFENSE,-PROSTITUTION,-PUBLIC_INDECENCY,-PUBLIC_PEACE_VIOLATION,-SEX_OFFENSE,-STALKING,-WEAPONS_VIOLATION,-ID,-i)
+```
+
+### correlation plot
+
+```{r}
+chart.Correlation(divy_subset)
+```
+
+
+## Understanding relation between number of bike rentals vs crimes
+
+```{r}
+fit1 = lm(trips ~ THEFT + BATTERY + DECEPTIVE_PRACTICE + ASSAULT + BURGLARY + ROBBERY + CRIMINAL_TRESPASS + NARCOTICS + HOMICIDE, data = divy)
+drop1(fit1, test = "F")
+#anova(fit1)
+```
+
+
+- drop1 output hints at removing battery from our model
+
+```{r}
+library("car")
+fit2 = lm(trips ~ THEFT + DECEPTIVE_PRACTICE + ASSAULT + BURGLARY + ROBBERY + CRIMINAL_TRESPASS + NARCOTICS + HOMICIDE, data = divy)
+summary(fit2)
+vif(fit2)
+plot(fit2,which=1)
+drop1(fit2, test = "F")
+cor(divy$THEFT, divy$DECEPTIVE_PRACTICE)
+```
+
+
+- vif suggests severe multicollinearity between THEFT and DECEPTIVE_PRACTICE with cor = 0.9496049
+
+- drop1 suggests removal of DECEPTIVE_PRACTICE
+
+
+```{r}
+library("car")
+fit3 = lm(trips ~ THEFT + ASSAULT + BURGLARY + ROBBERY + CRIMINAL_TRESPASS + NARCOTICS + HOMICIDE, data = divy)
+summary(fit3)
+vif(fit3)
+plot(fit3,which=1)
+drop1(fit3, test = "F")
+cor(divy$CRIMINAL_TRESPASS, divy$THEFT)
+cor(divy$CRIMINAL_TRESPASS, divy$ASSAULT)
+cor(divy$CRIMINAL_TRESPASS, divy$ROBBERY)
+```
+
+
+- vif anc cor suggests severe multicollinearity between CRIMINAL_TRESPASS and THEFT, ASSAULT, ROBBERY.
+
+- drop1 suggests removal of CRIMINAL_TRESPASS
+
+```{r}
+library("car")
+fit4 = lm(trips ~ THEFT + ASSAULT + BURGLARY + ROBBERY + NARCOTICS + HOMICIDE, data = divy)
+summary(fit4)
+vif(fit4)
+plot(fit4,which=1)
+drop1(fit4, test = "F")
+cor(divy$ASSAULT, divy$THEFT)
+cor(divy$CRIMINAL_TRESPASS, divy$THEFT)
+#cor(divy$CRIMINAL_TRESPASS, divy$ROBBERY)
+```
+
+
+- coefficient of THEFT is positive 1.32 which indicates that more thefts lead to more divy sales. This goes against the logic. 
+
+- vif of THEFT is high 3.9722
+
+- high cor between THEFT and other variables, suggests removal of THEFT.
+
+```{r}
+library("car")
+fit4 = lm(trips ~ ASSAULT + BURGLARY + ROBBERY + NARCOTICS + HOMICIDE, data = divy)
+summary(fit4)
+vif(fit4)
+plot(fit4,which=1)
+drop1(fit4, test = "F")
+#cor(divy$ASSAULT, divy$THEFT)
+#cor(divy$CRIMINAL_TRESPASS, divy$THEFT)
+```
+
+### Understanding relationship between individual predictor variables vs bike rentals
+
+- DECEPTIVE_PRACTICE
+```{r}
+fit=lm(trips~DECEPTIVE_PRACTICE,divy_subset)
+fit2=lm(log(trips)~log(DECEPTIVE_PRACTICE),divy_subset)
+plot(divy_subset$DECEPTIVE_PRACTICE,divy_subset$trips)
+#plot(fit)
+
+abline(fit)
+lines(2:8, exp(predict(fit2, data.frame(DECEPTIVE_PRACTICE=2:8))), col=2)
+```
+- HOMICIDE
+```{r}
+fit=lm(trips~HOMICIDE,divy_subset)
+plot(divy_subset$HOMICIDE,divy_subset$trips)
+#plot(fit)
+abline(fit)
+#fit2=lm(log(trips)~HOMICIDE,divy_subset)
+#lines(0:3, exp(predict(fit2, data.frame(HOMICIDE=0:3))), col=2)
+
+```
+- NARCOTICS
+```{r}
+fit=lm(trips~NARCOTICS,divy_subset)
+plot(divy_subset$NARCOTICS,divy_subset$trips)
+abline(fit)
+#fit2=lm(trips~NARCOTICS+I(NARCOTICS^2),divy_subset)
+#lines(0:6, predict(fit2, data.frame(NARCOTICS=0:6)), col=2)
+#plot(fit)
+```
+- ROBBERY
+```{r}
+fit=lm(trips~ROBBERY,divy_subset)
+plot(divy_subset$ROBBERY,divy_subset$trips)
+abline(fit)
+#fit2=lm(trips~ROBBERY+I(ROBBERY^0.5),divy_subset)
+#lines(0:6, predict(fit2, data.frame(ROBBERY=0:6)), col=2)
+#plot(fit)
+
+```
+
+- THEFT
+```{r}
+fit=lm(trips~THEFT,divy_subset)
+plot(divy_subset$THEFT,divy_subset$trips)
+abline(fit)
+#plot(fit)
+#fit2=lm(trips~THEFT+I(THEFT^2),divy_subset)
+fit2=lm(log(trips)~log(THEFT),divy_subset)
+lines(4:9, exp(predict(fit2, data.frame(THEFT=4:9))), col=2)
+```
+- BURGLARY
+```{r}
+fit=lm(trips~BURGLARY,divy_subset)
+plot(divy_subset$BURGLARY,divy_subset$trips)
+abline(fit)
+#fit2=lm(trips~BURGLARY+I(BURGLARY^2),divy_subset)
+#lines(1:6, predict(fit2, data.frame(BURGLARY=1:6)), col=2)
+```
+- Retail_Food_Establishment
+```{r}
+fit = lm(trips ~ Retail_Food_Establishment, data = divy_subset)
+#plot(fit)
+plot(x=divy_subset$Retail_Food_Establishment, y = divy_subset$trips)
+fit = lm(trips ~ Retail_Food_Establishment + I(Retail_Food_Establishment^2), data = divy_subset)
+lines(x = 0:150000, y = predict(fit,data.frame(Retail_Food_Establishment = 0:150000), type = 'resp'),col= 2)
+```
+
+- CAPACITY:
+
+```{r}
+fit = lm(trips ~ CAPACITY, data = divy_subset)
+#plot(fit)
+plot(x=divy_subset$CAPACITY, y = divy_subset$trips)
+fit = lm(trips ~ CAPACITY + I(CAPACITY^2), data = divy_subset)
+lines(x = 0:60, y = predict(fit,data.frame(CAPACITY = 0:60), type = 'resp'),col= 2)
+```
+
+- PER_CAPITA_INCOME
+
+```{r}
+fit = lm(trips ~ PER_CAPITA_INCOME, data = divy_subset)
+#plot(fit)
+plot(x=divy_subset$PER_CAPITA_INCOME, y = divy_subset$trips)
+abline(fit)
+summary(fit)
+
+```
+
+- PER_CAPITA_INCOME CAN be DROPPED 
+
+- check for  significance, drop if not significant.
+
+- POPULATION_SQ_MILE
+
+```{r}
+fit = lm(trips ~ POPULATION_SQ_MILE, data = divy_subset)
+#plot(fit)
+plot(x=divy_subset$POPULATION_SQ_MILE, y = divy_subset$trips)
+abline(fit)
+
+```
+
+- 
+
+
+- CBD
+
+
+```{r}
+fit = lm(trips ~ CBD, data = divy_subset)
+#plot(fit)
+plot(x=divy_subset$CBD, y = divy_subset$trips)
+abline(fit)
+summary(fit)
+```
+
+- equally distributes
+
+- can be dropped from model
+
+- check significant level
+
+```{r}
+#MINORITY
+fit_MINORITY <- lm(trips~MINORITY, divy_subset)
+plot(divy_subset$MINORITY, divy_subset$trips)
+abline(fit_MINORITY)
+```
+
+```{r}
+#EDU
+fit_EDU<- lm(trips~EDU, divy_subset)
+plot(divy_subset$EDU, divy_subset$trips)
+abline(fit_EDU)
+```
+
+```{r}
+#ASSAULT
+fit_ASSAULT<- lm(trips~ASSAULT+I(ASSAULT^2), divy_subset)
+plot(divy_subset$ASSAULT, divy_subset$trips)
+lines(1:8, predict(fit_ASSAULT, data.frame(ASSAULT=1:8)), col=2)
+```
+
+```{r}
+#BATTERY
+fit_BATTERY<- lm(trips~BATTERY+I(BATTERY^2), divy_subset)
+plot(divy_subset$BATTERY, divy_subset$trips)
+lines(1:10, predict(fit_BATTERY, data.frame(BATTERY=1:10)), col=2)
+```
+
+```{r}
+#BURGLARY
+fit_BURGLARY<- lm(trips~BURGLARY+I(BURGLARY^2), divy_subset)
+plot(divy_subset$BURGLARY, divy_subset$trips)
+lines(1:7, predict(fit_BURGLARY, data.frame(BURGLARY=1:7)), col=2)
+
+```
+
+-  Analysis on the PARK_AREA_ACRES
+
+```{r}
+fit1 <- lm(trips ~ PARK_AREA_ACRES, divy_subset)
+plot(divy_subset$PARK_AREA_ACRES, divy_subset$trips)
+abline(fit1)
+
+#plot(fit1, which=1)
+
+# applying the Quadratic function as we see the Inverted U from the above plot(fit)
+
+fit1a <- lm(trips ~ PARK_AREA_ACRES + I(PARK_AREA_ACRES^2), divy_subset)
+#plot(fit1a)
+plot(divy_subset$PARK_AREA_ACRES, divy_subset$trips)
+#lines(x = divy_subset$PARK_AREA_ACRES, y = predict(fit1a, type = "resp"),type = "l")
+lines(500:1600, predict(fit1a, data.frame(PARK_AREA_ACRES=500:1600)), col=2)
+
+```
+
+-  Analysis on the CTA_BUS_STATIONS
+```{r}
+
+fit2 <- lm(trips ~ CTA_BUS_STATIONS, divy_subset)
+plot(divy_subset$CTA_BUS_STATIONS, divy_subset$trips)
+abline(fit2)
+#plot(fit2, which=1)
+
+# applying the Quadratic function as we see the Inverted U from the above plot(fit)
+
+fit2a <- lm(trips ~ CTA_BUS_STATIONS + I(CTA_BUS_STATIONS^2), divy_subset)
+#plot(fit2a)
+plot(divy_subset$CTA_BUS_STATIONS, divy_subset$trips)
+lines(10:400, predict(fit2a, data.frame(CTA_BUS_STATIONS=10:400)), col=2)
+
+```
+
+- Analysis on the CTA_TRAIN_STATIONS
+```{r}
+fit3 <- lm(trips ~ CTA_TRAIN_STATIONS, divy_subset)
+plot(divy_subset$CTA_TRAIN_STATIONS, divy_subset$trips)
+abline(fit3)
+#plot(fit3, which=1)
+
+# applying the Quadratic function as we see the Inverted U from the above plot(fit)
+
+fit3a <- lm(trips ~ CTA_TRAIN_STATIONS + I(CTA_TRAIN_STATIONS^2), divy_subset)
+#plot(fit3a, which=1)
+plot(divy_subset$CTA_TRAIN_STATIONS, divy_subset$trips)
+lines(0:25, predict(fit3a, data.frame(CTA_TRAIN_STATIONS=0:25)), col=2)
+
+```
+
+- Analysis on the BIKE_ROUTES
+
+```{r}
+
+fit4 <- lm(trips ~ BIKE_ROUTES, divy_subset)
+plot(divy_subset$BIKE_ROUTES, divy_subset$trips)
+abline(fit4)
+#plot(fit4, which=1)
+
+# applying the Quadratic function as we see the Inverted U from the above plot(fit)
+
+fit4a <- lm(trips ~ BIKE_ROUTES + I(BIKE_ROUTES^2), divy_subset)
+#plot(fit4a, which=1)
+plot(divy_subset$BIKE_ROUTES, divy_subset$trips)
+lines(0:45, predict(fit4a, data.frame(BIKE_ROUTES=0:45)), col=2)
+
+```
+
+- Analysis on the Limited_Business_License
+
+```{r}
+
+fit5 <- lm(trips ~ Limited_Business_License, divy_subset)
+plot(divy_subset$Limited_Business_License, divy_subset$trips)
+abline(fit5)
+#plot(fit5, which=1)
+
+# applying the Quadratic function as we see the Inverted U from the above plot(fit)
+
+fit5a <- lm(trips ~ Limited_Business_License + I(Limited_Business_License^2), divy_subset)
+#plot(fit5a, which=1)
+plot(divy_subset$Limited_Business_License, divy_subset$trips)
+lines(4000:650000, predict(fit5a, data.frame(Limited_Business_License=4000:650000)), col=2)
+
+```
+
+#### stepwise backward regression
+```{r}
+fit1 = lm(trips ~
+            log(DECEPTIVE_PRACTICE)+
+            HOMICIDE+
+            NARCOTICS+
+            ROBBERY+
+            log(THEFT)+
+            BURGLARY+
+            PARK_AREA_ACRES + 
+            I(PARK_AREA_ACRES^2) +
+            CTA_BUS_STATIONS+#.
+            I(CTA_BUS_STATIONS^2) + #**
+            CTA_TRAIN_STATIONS +#***
+            I(CTA_TRAIN_STATIONS^2) +#.
+            BIKE_ROUTES + #**
+            I(BIKE_ROUTES^2) +#
+            Limited_Business_License + #***
+            I(Limited_Business_License^2)+ #***
+            Retail_Food_Establishment + 
+            I(Retail_Food_Establishment^2) +
+            CAPACITY + 
+            I(CAPACITY^2) +
+            POPULATION_SQ_MILE + 
+            CBD+
+            MINORITY+
+            EDU+
+            ASSAULT+
+            I(ASSAULT^2)+
+            BATTERY+
+            I(BATTERY^2)+
+            BURGLARY+
+            I(BURGLARY^2),divy_subset)
+summary(fit1)
+step(object = fit1)
+```
+
+### Our Final model based on Step wise regression
+```{r}
+fit2<-lm(formula = trips~ log(DECEPTIVE_PRACTICE) + NARCOTICS + BURGLARY + 
+    PARK_AREA_ACRES + I(PARK_AREA_ACRES^2) + I(CTA_BUS_STATIONS^2) + 
+    CTA_TRAIN_STATIONS + BIKE_ROUTES + I(BIKE_ROUTES^2) + Retail_Food_Establishment + 
+    CAPACITY + I(CAPACITY^2) + POPULATION_SQ_MILE + MINORITY + 
+    I(ASSAULT^2) + I(BATTERY^2) + I(BURGLARY^2), data = divy_subset)
+summary(fit2)
+
+vif(fit2)
+```
+###Interperation of the summary of fit
+
+- For a unit change in log of DECEPTIVE_PRACTICE, there will be average increase of 2.098e-01 units in trips     
+- For a unit change in NARCOTICS, there will be average decrease of -1.159e-02 units in trips      
+- For a unit change in BURGLARY, there will be average decrease of -3.073e-01 units in trips      
+- For a unit change in PARK_AREA_ACRES, there will be average increase of 4.572e-041 units in trips and for a unit change in I(PARK_AREA_ACRES^2), there will be average decrease of -2.616e-07 units in trips
+- For a unit change in I(CTA_BUS_STATIONS^2), there will be average decrease of -5.107e-07 units in trips and for a unit change in CTA_TRAIN_STATIONS, there will be average decrease of -2.046e-03 units in trips
+- For a unit change in I(BIKE_ROUTES^2), there will be average decrease of -1.477e-04 units in trips and for a unit change in BIKE_ROUTES, there will be average increase of 8.787e-03 units in trips
+- For a unit change in Retail_Food_Establishment, there will be average incerase of 6.577e-07 units of trips.   
+- For a unit change in POPULATION_SQ_MILE, there will be average incerase of 4.437e-07 units of trips.
+- For a unit change in square of Burglary, there will be average increase of 0.00331 units in trips. 
+- For a unit change in I(CAPACITY^2), there will be average decrease of -1.231e-04 units in trips and for a unit change in CAPACITY, there will be average increase of 1.014e-02 units in trips
+- For a unit change in I(BATTERY^2), there will be average increase of 1.463e-03 units in trips
+- For a unit change in MINORITY, there will be average decrease of 1.209e-01 units of trips.
+
+
+##
+- The VIF value of many predictor variables exceeds 10 in the current fit.
+- In the next version we will try to address Multicollinearlity problem between predictor variables
+- And also to incorporate the composite variables for CBD variable.
+
+
+

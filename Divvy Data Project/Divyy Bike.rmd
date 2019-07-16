@@ -1,0 +1,155 @@
+---
+title: "Divvy bike"
+author: "Sid"
+date: "April 20, 2019"
+output: html_document
+---
+
+### How does the type and amount of crime around a Divvy bike station affect the demand for bikes, as measured by the number of rentals per time period?
+
+Your data will have data on how often 31 different crimes occurred in the area around the bike share station during the previous year. Many of the crimes are are, so we will focus on the following eight (you could use the other if you want): theft, battery, deceptive practice, assault, burglary, robbery, criminal trespassing, narcotics, and homicide.  
+
+You will also have data on: number of bus stops in the area, number of train
+stops in the area, station capacity (number of bikes), number of marked bike routes,
+number of businesses in the area, population density, park area, percent minority,
+average education level, and average per capita income. For this problem, I want you
+to develop a theory to explain how dierent types of crime will affect demand. It
+may be that some types of crime have no relationship with demand, and your theory
+should allow for this. Why might some types have an association and others not?
+Another consideration is that you have actual crime statistics from the Chicago Police
+Department instead of perceptions about crime. The two could be different (why?).
+Your next assignment will be to test your theory against the data.
+
+```{r}
+divy = read.csv("bike.csv", header = TRUE)
+colnames(divy)
+nrow(divy)
+```
+- n = 300 bike stations
+
+
+```{r}
+head(divy)
+cor(divy)
+```
+
+
+### Understanding relationship between type and amount of crime vs demand for bikes
+
+#### stepwise backward regression
+
+```{r}
+library("car")
+fit1 = lm(trips ~ THEFT + BATTERY + DECEPTIVE_PRACTICE + ASSAULT + BURGLARY + ROBBERY + CRIMINAL_TRESPASS + NARCOTICS + HOMICIDE, data = divy)
+summary(fit1)
+vif(fit1)
+#plot(fit1)
+step(object = fit1)
+```
+
+- Severe multicollinearity in predictor variables suggested by cor and vif output.
+
+- Cor: Battery vs Assault 0.95044632
+
+- Cor: Battery vs criminal_Trespass 0.86059447
+
+- Cor: Assault vs Criminal_Trespass 0.83392105
+
+- Cor: Battery vs DECEPTIVE_PRACTICE 0.77256304
+
+- Cor: Assault vs DECEPTIVE_PRACTICE 0.74865873
+
+- backward regression model gives us:  
+formula = THEFT + BATTERY + DECEPTIVE_PRACTICE + ASSAULT + BURGLARY + ROBBERY + CRIMINAL_TRESPASS + HOMICIDE
+
+
+### Stepwise (forward) regression analysis of crimes on divyy sales
+
+```{r}
+fit1 = lm(trips ~ 1, data = divy)
+fit2 = step(fit1, scope = ~ THEFT + BATTERY + DECEPTIVE_PRACTICE + ASSAULT + BURGLARY + ROBBERY + CRIMINAL_TRESPASS + NARCOTICS + HOMICIDE, test = "F")
+summary(fit2)
+
+```
+
+ 
+
+## Understanding relation between number of bike rentals vs number of bus stops in the area, number of train stops in the area, station capacity (number of bikes), number of marked bike routes, number of businesses in the area, population density, park area, percent minority, average education level, and average per capita income.
+
+
+```{r}
+fit1 = lm(trips ~ THEFT + BATTERY + DECEPTIVE_PRACTICE + ASSAULT + BURGLARY + ROBBERY + CRIMINAL_TRESPASS + NARCOTICS + HOMICIDE, data = divy)
+drop1(fit1, test = "F")
+#anova(fit1)
+```
+
+
+- drop1 output hints at removing battery from our model
+
+```{r}
+library("car")
+fit2 = lm(trips ~ THEFT + DECEPTIVE_PRACTICE + ASSAULT + BURGLARY + ROBBERY + CRIMINAL_TRESPASS + NARCOTICS + HOMICIDE, data = divy)
+summary(fit2)
+vif(fit2)
+plot(fit2)
+drop1(fit2, test = "F")
+cor(divy$THEFT, divy$DECEPTIVE_PRACTICE)
+```
+
+
+- vif suggests severe multicollinearity between THEFT and DECEPTIVE_PRACTICE with cor = 0.9496049
+
+- drop1 suggests removal of DECEPTIVE_PRACTICE
+
+
+```{r}
+library("car")
+fit3 = lm(trips ~ THEFT + ASSAULT + BURGLARY + ROBBERY + CRIMINAL_TRESPASS + NARCOTICS + HOMICIDE, data = divy)
+summary(fit3)
+vif(fit3)
+plot(fit3)
+drop1(fit3, test = "F")
+cor(divy$CRIMINAL_TRESPASS, divy$THEFT)
+cor(divy$CRIMINAL_TRESPASS, divy$ASSAULT)
+cor(divy$CRIMINAL_TRESPASS, divy$ROBBERY)
+```
+
+
+- vif anc cor suggests severe multicollinearity between CRIMINAL_TRESPASS and THEFT, ASSAULT, ROBBERY.
+
+- drop1 suggests removal of CRIMINAL_TRESPASS
+
+```{r}
+library("car")
+fit4 = lm(trips ~ THEFT + ASSAULT + BURGLARY + ROBBERY + NARCOTICS + HOMICIDE, data = divy)
+summary(fit4)
+vif(fit4)
+plot(fit4)
+drop1(fit4, test = "F")
+cor(divy$ASSAULT, divy$THEFT)
+cor(divy$CRIMINAL_TRESPASS, divy$THEFT)
+#cor(divy$CRIMINAL_TRESPASS, divy$ROBBERY)
+```
+
+
+- coefficient of THEFT is positive 1.32 which indicates that more thefts lead to more divy sales. This goes against the logic. 
+
+- vif of THEFT is high 3.9722
+
+- high cor between THEFT and other variables, suggests removal of THEFT.
+
+```{r}
+library("car")
+fit4 = lm(trips ~ ASSAULT + BURGLARY + ROBBERY + NARCOTICS + HOMICIDE, data = divy)
+summary(fit4)
+vif(fit4)
+plot(fit4)
+drop1(fit4, test = "F")
+#cor(divy$ASSAULT, divy$THEFT)
+#cor(divy$CRIMINAL_TRESPASS, divy$THEFT)
+```
+
+
+
+
+

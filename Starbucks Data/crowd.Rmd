@@ -1,0 +1,290 @@
+---
+title: "Analysis of Crowd Source Data"
+output: html_document
+---
+
+# Load needed libraries
+```{r eval = FALSE, echo = FALSE}
+# Run this section manually only once to import all the dependencies into RStudio
+install.packages("pROC")
+install.packages("randomForest")
+install.packages("survival")
+install.packages("lattice")
+install.packages("gbm")
+install.packages("foreach")
+install.packages("gam")
+install.packages("Matrix")
+install.packages("glmnet")
+install.packages("tree")
+```
+
+```{r}
+library(pROC)
+library(randomForest)
+library(survival)
+library(lattice)
+# library(splines) # loaded by gam as a dependency
+# library(foreach) # loaded by gam as a dependency
+library(parallel)
+library(gbm)
+library(gam)
+library(Matrix)
+library(glmnet)
+library(tree)
+```
+
+# Load data
+```{r}
+crowd = read.csv("crowd.csv")
+```
+
+# Assign test set
+```{r}
+set.seed(12345)
+train = runif(nrow(crowd))<.7   # pick train/test split
+table(train)
+names(crowd)
+summary(crowd)
+```
+
+# Examine correlation matrix
+```{r}
+round(cor(crowd), 2)
+```
+
+# Ridge (Contributor+Content)
+```{r}
+x = model.matrix(y~.-pastideas-votes-comments, crowd)
+fit.ridge = glmnet(x[train,], crowd$y[train], family="binomial", alpha=0)
+fit.cv.ridge = cv.glmnet(x[train,], crowd$y[train], family="binomial", alpha=0)
+plot(fit.ridge, xvar = "lambda")
+abline(v=log(fit.cv.ridge$lambda.min))
+```
+
+```{r}
+predict(fit.ridge, x[!train,], s=fit.cv.ridge$lambda.min, type="coef")
+```
+
+```{r}
+phat = predict(fit.ridge, x[!train,], s=fit.cv.ridge$lambda.min, type="response")
+auc(crowd$y[!train], as.vector(phat))
+```
+<!--
+[1] 0.6252981
+-->
+
+# Ridge (All variables)
+```{r}
+x = model.matrix(y~., crowd)
+fit.ridge = glmnet(x[train,], crowd$y[train], family="binomial", alpha=0)
+fit.cv.ridge = cv.glmnet(x[train,], crowd$y[train], family="binomial", alpha=0)
+plot(fit.ridge, xvar = "lambda")
+abline(v=log(fit.cv.ridge$lambda.min))
+```
+
+```{r}
+predict(fit.ridge, x[!train,], s=fit.cv.ridge$lambda.min, type="coef")
+```
+
+```{r}
+phat = predict(fit.ridge, x[!train,], s=fit.cv.ridge$lambda.min, type="response")
+auc(crowd$y[!train], as.vector(phat))
+```
+
+# Lasso (Contributor+Content)
+```{r}
+x = model.matrix(y~.-pastideas-votes-comments, crowd)
+fit.lasso = glmnet(x[train,], crowd$y[train], family="binomial", alpha=1)
+fit.cv.lasso = cv.glmnet(x[train,], crowd$y[train], family="binomial", alpha=1)
+plot(fit.lasso, xvar = "lambda")
+abline(v=log(fit.cv.lasso$lambda.min))
+```
+
+```{r}
+predict(fit.lasso, x[!train,], s=fit.cv.lasso$lambda.min, type="coef")
+```
+
+```{r}
+phat = predict(fit.lasso, x[!train,], s=fit.cv.lasso$lambda.min, type="response")
+auc(crowd$y[!train], as.vector(phat))
+```
+
+# Lasso (All variables)
+```{r}
+x = model.matrix(y~., crowd)
+fit.lasso = glmnet(x[train,], crowd$y[train], family="binomial", alpha=1)
+fit.cv.lasso = cv.glmnet(x[train,], crowd$y[train], family="binomial", alpha=1)
+plot(fit.lasso, xvar = "lambda")
+abline(v=log(fit.cv.lasso$lambda.min))
+```
+
+```{r}
+predict(fit.lasso, x[!train,], s=fit.cv.lasso$lambda.min, type="coef")
+```
+
+```{r}
+phat = predict(fit.lasso, x[!train,], s=fit.cv.lasso$lambda.min, type="response")
+auc(crowd$y[!train], as.vector(phat)) # test set AUC = 0.7916172 
+```
+
+# GAM (Contributor+Content)
+```{r}
+fit.gam = gam(y ~ s(pastaccept)+s(commentsC)+s(X1)+s(X2)+s(X3)+s(X4)+s(X5)+s(X6)+s(X7)+s(X8)+s(X9)+s(X10)+s(X11)+s(age)+s(month)+s(diversity), binomial, crowd[train,])
+summary(fit.gam)
+```
+
+```{r}
+par(mfrow=c(1,3))
+plot(fit.gam, se=T)
+```
+
+```{r}
+par(mfrow=c(1,1))
+phat = predict(fit.gam, crowd[!train,], type="response")
+auc(crowd$y[!train], phat) 
+```
+
+# GAM (All variables)
+```{r}
+fit.gam = gam(y ~ ., binomial, crowd[train,])
+summary(fit.gam)
+```
+
+```{r}
+par(mfrow=c(1,3))
+plot(fit.gam, se=T)
+```
+
+```{r}
+par(mfrow=c(1,1))
+phat = predict(fit.gam, crowd[!train,], type="response")
+auc(crowd$y[!train], phat) 
+```
+
+# Tree (Contributor+Content)
+```{r}
+fit.tree = tree(y~.-pastideas-votes-comments, data=crowd[train,])
+fit.tree
+```
+
+```{r}
+plot(fit.tree, type="uniform")
+text(fit.tree)
+plot(cv.tree(fit.tree))
+```
+
+```{r}
+phat = predict(fit.tree, crowd[!train,])
+auc(crowd$y[!train], phat)
+```
+
+# Tree (All variables)
+```{r}
+fit.tree = tree(y~., data=crowd[train,])
+fit.tree
+```
+
+```{r}
+plot(fit.tree, type="uniform")
+text(fit.tree)
+plot(cv.tree(fit.tree))
+```
+
+```{r}
+phat = predict(fit.tree, crowd[!train,])
+auc(crowd$y[!train], phat)
+```
+
+# Random Forest (Contributor+Content)
+```{r}
+set.seed(12345)
+fit = randomForest(x=crowd[train, c(1,2,4,5,6,9:18)], y=factor(1-crowd$y[train]), xtest=crowd[!train,c(1,2,4,5,6,9:18)], ntree=100, keep.forest=T)
+fit
+```
+
+```{r}
+hist(fit$test$votes[,2], main="Predicted probabilities for test set")
+```
+
+```{r}
+varImpPlot(fit)
+```
+
+```{r}
+partialPlot(fit, crowd[train,], "diversity")
+partialPlot(fit, crowd[train,], "X8")
+partialPlot(fit, crowd[train,], "X3")
+```
+
+```{r}
+auc(1-crowd$y[!train], fit$test$votes[,2])
+```
+
+```{r}
+plot.roc(crowd$y[!train], fit$test$votes[,2], print.auc=T)
+```
+
+# Random Forest (All variables)
+```{r}
+set.seed(12345)
+fit = randomForest(x=crowd[train,], y=factor(1-crowd$y[train]), xtest=crowd[!train,], ntree=100, keep.forest=T)
+fit
+```
+
+```{r}
+auc(1-crowd$y[!train], fit$test$votes[,2])
+```
+
+```{r}
+plot.roc(crowd$y[!train], fit$test$votes[,2], print.auc=T)
+```
+
+# GBM (Contributor+Content)
+```{r}
+fit.gbm = gbm(y~.-pastideas-votes-comments, data=crowd[train,], n.trees=1000)
+fit.gbm
+summary(fit.gbm)
+```
+
+```{r}
+phat = predict(fit.gbm, crowd[!train,], n.trees=1000, type="response")
+auc(crowd$y[!train], phat)
+phat = predict(fit.gbm, crowd[!train,], n.trees=100, type="response")
+auc(crowd$y[!train], phat)
+phat = predict(fit.gbm, crowd[!train,], n.trees=500, type="response")
+auc(crowd$y[!train], phat)
+```
+
+# GBM (All variables)
+```{r}
+fit.gbm = gbm(y~., data=crowd[train,], n.trees=1000)
+fit.gbm
+summary(fit.gbm)
+```
+
+```{r}
+phat = predict(fit.gbm, crowd[!train,], n.trees=1000, type="response")
+auc(crowd$y[!train], phat)
+phat = predict(fit.gbm, crowd[!train,], n.trees=100, type="response")
+auc(crowd$y[!train], phat)
+phat = predict(fit.gbm, crowd[!train,], n.trees=500, type="response")
+auc(crowd$y[!train], phat)
+phat = predict(fit.gbm, crowd[!train,], n.trees=700, type="response")
+auc(crowd$y[!train], phat)
+```
+
+# Logistic Regression (Contributor+Content)
+```{r}
+fit = glm(y~.-pastideas-votes-comments, binomial, crowd[train,])
+log_odd_hat = predict(fit, data.frame(crowd[!train,]))
+phat = 1/(1+exp(-log_odd_hat))
+auc(crowd$y[!train], as.vector(phat))
+```
+
+# Logistic Regression (All variables)
+```{r}
+fit = glm(y~., binomial, crowd[train, ])
+log_odd_hat = predict(fit, data.frame(crowd[!train,]))
+phat = 1/(1+exp(-log_odd_hat))
+auc(crowd$y[!train], as.vector(phat))
+```

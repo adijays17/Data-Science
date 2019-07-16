@@ -1,0 +1,93 @@
+---
+title: "Divvy-Project2"
+output: html_document
+---
+
+```{r}
+library(corrplot)
+divvy <- read.csv("bike.csv")
+
+```
+
+```{r}
+divvy1 = divvy[,c(2,3,4,5,6,7,8,9,10,11,12,13,45)]
+plot(divvy1)
+
+divvy2 = divvy[,c(15,16,17,21,22,24,40,43,45)]
+plot(divvy2)
+
+fit1 = lm(divvy$trips ~ divvy$PARK_AREA_ACRES
+                      +divvy$CTA_BUS_STATIONS
+                      +divvy$CTA_TRAIN_STATIONS
+                      +divvy$BIKE_ROUTES
+                      +divvy$Limited_Business_License
+                      +divvy$Retail_Food_Establishment
+                      +divvy$CAPACITY
+                      +divvy$PER_CAPITA_INCOME
+                      +divvy$POPULATION_SQ_MILE
+                      +divvy$CBD
+                      +divvy$MINORITY
+                      +divvy$EDU
+                      +divvy$ASSAULT
+                      +divvy$BATTERY
+                      +divvy$BURGLARY
+                      +divvy$CRIMINAL_TRESPASS
+                      +divvy$DECEPTIVE_PRACTICE
+                      +divvy$HOMICIDE
+                      +divvy$ROBBERY
+                      +divvy$THEFT
+                      ,divvy)
+```
+
+```{r}
+summary(fit1)
+```
+
+```{r}
+vif(fit1)
+```
+
+```{r}
+drop1(fit1, test="F")
+anova(fit1)
+```
+
+```{r}
+fit2 = lm(divvy$trips ~ divvy$PARK_AREA_ACRES
+                      +divvy$CAPACITY
+                      +divvy$MINORITY
+                      +divvy$ASSAULT
+                      +divvy$BURGLARY
+                      +divvy$THEFT
+                      ,divvy)
+```
+
+```{r}
+summary(fit2)
+plot(fit2)
+```
+
+```{r}
+vif(fit2)
+```
+
+```{r}
+drop1(fit2, test="F")
+anova(fit2)
+```
+
+```{r}
+fit2.lasso = glmnet(x[train,], college$Apps[train], alpha=1)
+```
+```{r}
+set.seed(12345)
+train = runif(nrow(divvy))<.6   # pick train/test split
+table(train)
+names(divvy)
+summary(divvy)
+```
+
+```{r}
+x = model.matrix(trips~.-i-ID, divvy)
+x
+```

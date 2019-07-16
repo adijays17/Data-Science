@@ -1,0 +1,31 @@
+```{r}
+#MINORITY
+fit_MINORITY <- lm(trips~MINORITY, divy_subset)
+plot(divy_subset$MINORITY, divy_subset$trips)
+abline(fit_MINORITY)
+```
+```{r}
+#EDU
+fit_EDU<- lm(trips~EDU, divy_subset)
+plot(divy_subset$EDU, divy_subset$trips)
+abline(fit_EDU)
+```
+```{r}
+#ASSAULT
+fit_ASSAULT<- lm(trips~ASSAULT+I(ASSAULT^2), divy_subset)
+plot(divy_subset$ASSAULT, divy_subset$trips)
+lines(1:8, predict(fit_ASSAULT, data.frame(ASSAULT=1:8)), col=2)
+```
+```{r}
+#BATTERY
+fit_BATTERY<- lm(trips~BATTERY+I(BATTERY^2), divy_subset)
+plot(divy_subset$BATTERY, divy_subset$trips)
+lines(1:10, predict(fit_BATTERY, data.frame(BATTERY=1:10)), col=2)
+```
+```{r}
+#BURGLARY
+fit_BURGLARY<- lm(trips~BURGLARY+I(BURGLARY^2), divy_subset)
+plot(divy_subset$BURGLARY, divy_subset$trips)
+lines(1:7, predict(fit_BURGLARY, data.frame(BURGLARY=1:7)), col=2)
+```
+
